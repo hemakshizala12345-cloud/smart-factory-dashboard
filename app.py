@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import random
 from time import sleep
 
 # ---------- PAGE CONFIG ----------
@@ -18,39 +17,43 @@ if "prev_data" not in st.session_state:
 # ---------- AI THINK LAYER ----------
 def predict_demand(stock):
     if stock < 100:
-        return "Stock will run out in 2 days 🚨"
+        return "🚨 Stock will run out soon"
     else:
-        return "Stock level is safe ✅"
+        return "✅ Stock level is safe"
 
 def best_route():
-    return "Best Route: A → C → D (Optimized)"
+    return "🗺️ Route Optimized: A → C → D"
 
 def predict_delay(speed):
     if speed < 10:
-        return "High Delay Risk ⚠️"
+        return "🚨 High Delay Risk"
     else:
-        return "Low Delay Risk ✅"
+        return "✅ Low Delay Risk"
 
-# ---------- CUSTOM UI ----------
+# ---------- DELTA FUNCTION ----------
+def get_delta(current, previous):
+    if previous == 0:
+        return "0%"
+    change = current - previous
+    percent = (change / previous) * 100
+    return f"{percent:+.1f}%"
+
+# ---------- UI ----------
 st.markdown("""
 <style>
 .stApp { background-color: #0e1117; }
-
 .header {
     padding: 20px;
     border-radius: 12px;
     background: linear-gradient(90deg, #00d4ff, #007cf0);
     color: white;
     text-align: center;
-    margin-bottom: 20px;
 }
-
 .card {
     background-color: #1c1f26;
     padding: 20px;
     border-radius: 12px;
-    margin-bottom: 20px;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.4);
+    margin-top: 15px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -64,18 +67,12 @@ st.sidebar.markdown("---")
 st.sidebar.write("👤 Dashboard Lead")
 st.sidebar.write("🟢 System Active")
 
-# Load CSV
+# Load data
 user_data = None
 if uploaded_file is not None:
     user_data = pd.read_csv(uploaded_file)
 
-# ---------- DELTA FUNCTION ----------
-def get_delta(current, previous):
-    change = current - previous
-    percent = (change / previous) * 100
-    return f"{percent:+.1f}%"
-
-# ---------- LIVE LOOP ----------
+# ---------- MAIN ----------
 placeholder = st.empty()
 
 while True:
@@ -92,21 +89,24 @@ while True:
         # ---------- KPI ----------
         st.markdown('<div class="card">', unsafe_allow_html=True)
 
-        prod = random.randint(100,150)
-        eff = random.randint(85,95)
-        down = random.randint(5,15)
-        energy = random.randint(400,500)
+        if user_data is not None:
+
+            prod = int(user_data["outflow"].mean())
+            eff = int((user_data["inflow"].sum() / user_data["outflow"].sum()) * 100)
+            down = int((user_data["truck_status"] == "Stopped").sum())
+            energy = int(user_data["speed_kmph"].mean() * 5)
+
+        else:
+            prod, eff, down, energy = 120, 90, 10, 450
 
         prev = st.session_state.prev_data
 
         c1, c2, c3, c4 = st.columns(4)
 
-        c1.metric("Production", f"{prod}", get_delta(prod, prev["prod"]))
+        c1.metric("Production", prod, get_delta(prod, prev["prod"]))
         c2.metric("Efficiency", f"{eff}%", get_delta(eff, prev["eff"]))
-        c3.metric("Downtime", f"{down}", get_delta(down, prev["down"]))
-        c4.metric("Energy", f"{energy}", get_delta(energy, prev["energy"]))
-
-        st.markdown('</div>', unsafe_allow_html=True)
+        c3.metric("Downtime", down, get_delta(down, prev["down"]))
+        c4.metric("Energy", energy, get_delta(energy, prev["energy"]))
 
         st.session_state.prev_data = {
             "prod": prod,
@@ -115,19 +115,24 @@ while True:
             "energy": energy
         }
 
-        # ---------- MACHINE ----------
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # ---------- MACHINE HEALTH ----------
         st.markdown('<div class="card">', unsafe_allow_html=True)
 
+        if user_data is not None and len(user_data) >= 3:
+            h1 = int(user_data["speed_kmph"].iloc[0] * 2)
+            h2 = int(user_data["speed_kmph"].iloc[1] * 2)
+            h3 = int(user_data["speed_kmph"].iloc[2] * 2)
+        else:
+            h1, h2, h3 = 90, 85, 88
+
         m1, m2, m3 = st.columns(3)
-
-        h1 = random.randint(70, 100)
-        h2 = random.randint(60, 95)
-        h3 = random.randint(75, 98)
-
         m1.metric("Machine 1", f"{h1}%")
         m2.metric("Machine 2", f"{h2}%")
         m3.metric("Machine 3", f"{h3}%")
 
+        # ALERT
         popup = False
         message = ""
 
@@ -167,52 +172,39 @@ while True:
         # ---------- CHART ----------
         st.markdown('<div class="card">', unsafe_allow_html=True)
 
-        chart_data = pd.DataFrame({
-            "Production": [random.randint(90,150) for _ in range(6)],
-            "Energy": [random.randint(400,500) for _ in range(6)]
-        })
-
-        st.line_chart(chart_data)
+        if user_data is not None:
+            st.line_chart(user_data[["stock_level", "speed_kmph"]])
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---------- AI THINK LAYER ----------
+        # ---------- AI THINK ----------
         if view == "AI Insights":
             st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.subheader("🧠 THINK Layer - AI Engine")
+            st.subheader("🧠 THINK Layer")
 
             if user_data is not None:
+
                 st.dataframe(user_data)
 
-                # Demand Prediction
-                if "stock_level" in user_data.columns:
-                    avg_stock = user_data["stock_level"].mean()
-                    st.info(f"📊 {predict_demand(avg_stock)}")
+                avg_stock = user_data["stock_level"].mean()
+                st.info(predict_demand(avg_stock))
 
-                # Route
-                st.success(f"🗺️ {best_route()}")
+                st.success(best_route())
 
-                # Delay
-                if "speed_kmph" in user_data.columns:
-                    avg_speed = user_data["speed_kmph"].mean()
-                    delay = predict_delay(avg_speed)
+                avg_speed = user_data["speed_kmph"].mean()
+                delay = predict_delay(avg_speed)
 
-                    if "High" in delay:
-                        st.error(f"🚨 {delay}")
-                    else:
-                        st.success(f"✅ {delay}")
-
-                # Chart
-                if "stock_level" in user_data.columns:
-                    st.line_chart(user_data["stock_level"])
+                if "High" in delay:
+                    st.error(delay)
+                else:
+                    st.success(delay)
 
             else:
-                st.warning("Upload CSV to activate AI engine")
+                st.warning("Upload CSV")
 
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---------- FOOTER ----------
         st.markdown("---")
-        st.success("🟢 System Fully Operational")
+        st.success("🟢 System Operational")
 
     sleep(5)
