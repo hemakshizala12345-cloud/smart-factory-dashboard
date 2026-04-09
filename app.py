@@ -7,7 +7,7 @@ from time import sleep
 # ---------- PAGE CONFIG ----------
 st.set_page_config(page_title="Smart Factory Dashboard", layout="wide")
 
-# ---------- SESSION STATE ----------
+# ---------- SESSION ----------
 if "prev_data" not in st.session_state:
     st.session_state.prev_data = {"prod":120,"eff":90,"down":10,"energy":450}
 
@@ -19,6 +19,26 @@ def get_delta(current, previous):
     if previous == 0:
         return "0%"
     return f"{((current-previous)/previous)*100:+.1f}%"
+
+# ---------- DIGITAL TWIN ----------
+def simulate_future(data):
+    future_stock = []
+    future_speed = []
+
+    stock = data["stock_level"].iloc[-1]
+    speed = data["speed_kmph"].iloc[-1]
+
+    for _ in range(5):
+        stock = stock - random.randint(5,20) + random.randint(0,10)
+        speed = max(0, speed + random.randint(-10,10))
+
+        future_stock.append(stock)
+        future_speed.append(speed)
+
+    return pd.DataFrame({
+        "Future Stock": future_stock,
+        "Future Speed": future_speed
+    })
 
 # ---------- UI ----------
 st.markdown("""
@@ -53,7 +73,6 @@ st.sidebar.write("🟢 System Active")
 
 # ---------- LOAD CSV ----------
 user_data = None
-
 if uploaded_file is not None:
     user_data = pd.read_csv(uploaded_file)
 
@@ -62,10 +81,8 @@ if uploaded_file is not None:
 
 # ---------- MODE ----------
 use_csv = False
-
 if st.session_state.upload_time is not None:
     elapsed = time.time() - st.session_state.upload_time
-
     if elapsed <= 10:
         use_csv = True
     else:
@@ -82,11 +99,11 @@ while True:
         st.markdown("""
         <div class="header">
             <h1>🏭 Smart AI Factory Dashboard</h1>
-            <p>Sense → THINK → Act</p>
+            <p>Sense → THINK → Act → Predict</p>
         </div>
         """, unsafe_allow_html=True)
 
-        # MODE DISPLAY
+        # MODE
         if use_csv:
             st.info("📂 Real Data Mode (10 sec)")
         else:
@@ -135,7 +152,6 @@ while True:
         m2.metric("Machine 2", f"{h2}%")
         m3.metric("Machine 3", f"{h3}%")
 
-        # ALERT
         popup = False
         msg = ""
 
@@ -151,7 +167,6 @@ while True:
         else:
             st.success("✅ All machines healthy")
 
-        # POPUP
         if popup:
             st.markdown(f"""
             <div style="
@@ -199,13 +214,11 @@ while True:
 
                     col1, col2, col3 = st.columns(3)
 
-                    # STOCK
                     if row["stock_level"] < 100:
                         col1.error(f"Stock: {row['stock_level']} → 🚨 Low")
                     else:
                         col1.success(f"Stock: {row['stock_level']} → ✅ OK")
 
-                    # SPEED
                     if row["speed_kmph"] < 10:
                         col2.error(f"Speed: {row['speed_kmph']} → 🚨 Delay")
                     elif row["speed_kmph"] < 25:
@@ -213,7 +226,6 @@ while True:
                     else:
                         col2.success(f"Speed: {row['speed_kmph']} → ✅ Normal")
 
-                    # AI DECISION
                     if row["stock_level"] < 100 and row["speed_kmph"] < 10:
                         col3.error("🚨 Critical")
                     elif row["stock_level"] < 100:
@@ -229,6 +241,23 @@ while True:
                 st.warning("Upload CSV to activate AI")
 
             st.markdown('</div>', unsafe_allow_html=True)
+
+            # ---------- DIGITAL TWIN ----------
+            if use_csv and user_data is not None:
+                st.markdown('<div class="card">', unsafe_allow_html=True)
+                st.subheader("🔮 Digital Twin – Future Simulation")
+
+                future_df = simulate_future(user_data)
+
+                st.line_chart(future_df)
+
+                if future_df["Future Stock"].min() < 100:
+                    st.error("🚨 Future Risk: Low Stock")
+
+                if future_df["Future Speed"].min() < 10:
+                    st.warning("⚠️ Future Delay Risk")
+
+                st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown("---")
         st.success("🟢 System Running")
