@@ -10,7 +10,7 @@ st.set_page_config(page_title="Smart Factory Dashboard", layout="wide")
 st.markdown("""
 <style>
 
-/* Main background */
+/* Background */
 .stApp {
     background-color: #0e1117;
 }
@@ -25,7 +25,7 @@ st.markdown("""
     margin-bottom: 20px;
 }
 
-/* Section Cards */
+/* Cards */
 .card {
     background-color: #1c1f26;
     padding: 20px;
@@ -75,10 +75,11 @@ while True:
         st.subheader("📊 Key Performance Indicators")
 
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Production", f"{random.randint(100,150)} units/hr")
-        col2.metric("Efficiency", f"{random.randint(85,95)}%")
-        col3.metric("Downtime", f"{random.randint(5,15)} min")
-        col4.metric("Energy", f"{random.randint(400,500)} kWh")
+
+        col1.metric("Production", f"{random.randint(100,150)} units/hr", "+5%")
+        col2.metric("Efficiency", f"{random.randint(85,95)}%", "+2%")
+        col3.metric("Downtime", f"{random.randint(5,15)} min", "-1 min")
+        col4.metric("Energy", f"{random.randint(400,500)} kWh", "-3%")
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -87,6 +88,7 @@ while True:
         st.subheader("🏭 Machine Health")
 
         c1, c2, c3 = st.columns(3)
+
         h1 = random.randint(70, 100)
         h2 = random.randint(60, 95)
         h3 = random.randint(75, 98)
@@ -135,21 +137,26 @@ while True:
             if user_data is not None:
                 st.dataframe(user_data)
 
+                # Low Stock Alert
                 if "stock_level" in user_data.columns:
                     low_stock = user_data[user_data["stock_level"] < 100]
                     if not low_stock.empty:
                         st.error(f"🚨 Low stock detected in {len(low_stock)} records")
 
+                # Truck Alerts
                 if "truck_status" in user_data.columns:
                     stopped = user_data[user_data["truck_status"] == "Stopped"]
                     if not stopped.empty:
                         st.warning(f"⚠️ {len(stopped)} truck(s) stopped")
 
+                # Speed Analysis
                 if "speed_kmph" in user_data.columns:
                     avg_speed = user_data["speed_kmph"].mean()
                     st.info(f"🚚 Average Speed: {avg_speed:.2f} km/h")
 
+                # Stock Chart
                 if "stock_level" in user_data.columns:
+                    st.subheader("📊 Stock Trend")
                     st.line_chart(user_data["stock_level"])
 
             else:
