@@ -6,7 +6,7 @@ from time import sleep
 # ---------- PAGE CONFIG ----------
 st.set_page_config(page_title="Smart Factory Dashboard", layout="wide")
 
-# ---------- SESSION STATE (for dynamic KPI) ----------
+# ---------- SESSION STATE ----------
 if "prev_data" not in st.session_state:
     st.session_state.prev_data = {
         "prod": 120,
@@ -15,12 +15,27 @@ if "prev_data" not in st.session_state:
         "energy": 450
     }
 
+# ---------- AI THINK LAYER ----------
+def predict_demand(stock):
+    if stock < 100:
+        return "Stock will run out in 2 days 🚨"
+    else:
+        return "Stock level is safe ✅"
+
+def best_route():
+    return "Best Route: A → C → D (Optimized)"
+
+def predict_delay(speed):
+    if speed < 10:
+        return "High Delay Risk ⚠️"
+    else:
+        return "Low Delay Risk ✅"
+
 # ---------- CUSTOM UI ----------
 st.markdown("""
 <style>
-.stApp {
-    background-color: #0e1117;
-}
+.stApp { background-color: #0e1117; }
+
 .header {
     padding: 20px;
     border-radius: 12px;
@@ -29,6 +44,7 @@ st.markdown("""
     text-align: center;
     margin-bottom: 20px;
 }
+
 .card {
     background-color: #1c1f26;
     padding: 20px;
@@ -53,7 +69,7 @@ user_data = None
 if uploaded_file is not None:
     user_data = pd.read_csv(uploaded_file)
 
-# ---------- FUNCTION FOR DELTA ----------
+# ---------- DELTA FUNCTION ----------
 def get_delta(current, previous):
     change = current - previous
     percent = (change / previous) * 100
@@ -65,15 +81,17 @@ placeholder = st.empty()
 while True:
     with placeholder.container():
 
-        # ---------- HEADER ----------
+        # HEADER
         st.markdown("""
         <div class="header">
             <h1>🏭 Smart AI Factory Dashboard</h1>
-            <p>Real-time Monitoring • Logistics • AI Insights</p>
+            <p>Sense → THINK → Act</p>
         </div>
         """, unsafe_allow_html=True)
 
-        # ---------- GENERATE NEW VALUES ----------
+        # ---------- KPI ----------
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+
         prod = random.randint(100,150)
         eff = random.randint(85,95)
         down = random.randint(5,15)
@@ -81,20 +99,15 @@ while True:
 
         prev = st.session_state.prev_data
 
-        # ---------- KPI ----------
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("📊 Key Performance Indicators")
-
         c1, c2, c3, c4 = st.columns(4)
 
-        c1.metric("Production", f"{prod} units/hr", get_delta(prod, prev["prod"]))
+        c1.metric("Production", f"{prod}", get_delta(prod, prev["prod"]))
         c2.metric("Efficiency", f"{eff}%", get_delta(eff, prev["eff"]))
-        c3.metric("Downtime", f"{down} min", get_delta(down, prev["down"]))
-        c4.metric("Energy", f"{energy} kWh", get_delta(energy, prev["energy"]))
+        c3.metric("Downtime", f"{down}", get_delta(down, prev["down"]))
+        c4.metric("Energy", f"{energy}", get_delta(energy, prev["energy"]))
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---------- UPDATE PREVIOUS ----------
         st.session_state.prev_data = {
             "prod": prod,
             "eff": eff,
@@ -102,9 +115,8 @@ while True:
             "energy": energy
         }
 
-        # ---------- MACHINE HEALTH ----------
+        # ---------- MACHINE ----------
         st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("🏭 Machine Health")
 
         m1, m2, m3 = st.columns(3)
 
@@ -116,23 +128,22 @@ while True:
         m2.metric("Machine 2", f"{h2}%")
         m3.metric("Machine 3", f"{h3}%")
 
-        # ---------- ALERT ----------
         popup = False
         message = ""
 
         if h2 < 70:
             popup = True
-            message = "🚨 Machine 2 Critical! Immediate action required!"
+            message = "🚨 Machine 2 Critical!"
         elif h1 < 75:
             popup = True
-            message = "⚠️ Maintenance required soon!"
+            message = "⚠️ Maintenance Required"
 
         if popup:
             st.error(message)
         else:
-            st.success("✅ All machines operating normally")
+            st.success("✅ All machines healthy")
 
-        # ---------- POPUP ----------
+        # POPUP
         if popup:
             st.markdown(f"""
             <div style="
@@ -140,16 +151,13 @@ while True:
                 top: 25%;
                 left: 30%;
                 width: 40%;
-                background-color: #ff4b4b;
+                background-color: red;
                 color: white;
                 padding: 25px;
                 border-radius: 15px;
                 text-align: center;
                 font-size: 22px;
-                z-index: 9999;
-                box-shadow: 0px 0px 25px rgba(0,0,0,0.6);
-            ">
-                ⚠️ SYSTEM ALERT<br><br>
+                z-index: 9999;">
                 {message}
             </div>
             """, unsafe_allow_html=True)
@@ -158,7 +166,6 @@ while True:
 
         # ---------- CHART ----------
         st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("📈 Production & Energy Trends")
 
         chart_data = pd.DataFrame({
             "Production": [random.randint(90,150) for _ in range(6)],
@@ -166,41 +173,46 @@ while True:
         })
 
         st.line_chart(chart_data)
+
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---------- AI INSIGHTS ----------
+        # ---------- AI THINK LAYER ----------
         if view == "AI Insights":
             st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.subheader("🤖 AI Logistics Insights")
+            st.subheader("🧠 THINK Layer - AI Engine")
 
             if user_data is not None:
                 st.dataframe(user_data)
 
+                # Demand Prediction
                 if "stock_level" in user_data.columns:
-                    low_stock = user_data[user_data["stock_level"] < 100]
-                    if not low_stock.empty:
-                        st.error(f"🚨 Low stock in {len(low_stock)} records")
+                    avg_stock = user_data["stock_level"].mean()
+                    st.info(f"📊 {predict_demand(avg_stock)}")
 
-                if "truck_status" in user_data.columns:
-                    stopped = user_data[user_data["truck_status"] == "Stopped"]
-                    if not stopped.empty:
-                        st.warning(f"⚠️ {len(stopped)} truck(s) stopped")
+                # Route
+                st.success(f"🗺️ {best_route()}")
 
+                # Delay
                 if "speed_kmph" in user_data.columns:
                     avg_speed = user_data["speed_kmph"].mean()
-                    st.info(f"🚚 Avg Speed: {avg_speed:.2f} km/h")
+                    delay = predict_delay(avg_speed)
 
+                    if "High" in delay:
+                        st.error(f"🚨 {delay}")
+                    else:
+                        st.success(f"✅ {delay}")
+
+                # Chart
                 if "stock_level" in user_data.columns:
                     st.line_chart(user_data["stock_level"])
 
             else:
-                st.info("Upload CSV to activate AI insights")
+                st.warning("Upload CSV to activate AI engine")
 
             st.markdown('</div>', unsafe_allow_html=True)
 
         # ---------- FOOTER ----------
         st.markdown("---")
-        st.success("🟢 System Status: Fully Operational")
-        st.caption("Smart Factory + AI + Logistics Dashboard")
+        st.success("🟢 System Fully Operational")
 
     sleep(5)
